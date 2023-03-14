@@ -17,6 +17,35 @@ constexpr const char prototype_long_text[] = "Lorem ipsum dolor sit amet, consec
 constexpr size_t min_strings = 2 << 8;
 constexpr size_t max_strings = 2 << 12;
 
+static void StdVector(benchmark::State& state) {
+        const auto num_strings = state.range(0);
+
+        for (auto _ : state) {
+
+                std::vector<std::string> V(0);
+                V.reserve(num_strings);
+                for (size_t idx = 0; idx != num_strings; ++idx)
+                {
+                        V.emplace_back(prototype_long_text);
+                }
+        }
+}
+BENCHMARK(StdVector)->RangeMultiplier(2)->Range(min_strings, max_strings);
+
+static void StdList(benchmark::State& state) {
+        const auto num_strings = state.range(0);
+
+        for (auto _ : state) {
+
+                std::list<std::string> L;
+                for (size_t idx = 0; idx != num_strings; ++idx)
+                {
+                        L.emplace_back(prototype_long_text);
+                }
+        }
+}
+BENCHMARK(StdList)->RangeMultiplier(2)->Range(min_strings, max_strings);
+
 static void PmrVector(benchmark::State& state) {
         const auto num_strings = state.range(0);
 
@@ -47,10 +76,10 @@ static void PmrList(benchmark::State& state) {
         for (auto _ : state) {
 
                 std::pmr::monotonic_buffer_resource pool{ buf.data(), buf.size(), std::pmr::null_memory_resource() };
-                std::pmr::list<std::pmr::string> V{ 0, &pool };
+                std::pmr::list<std::pmr::string> L{ 0, &pool };
                 for (size_t idx = 0; idx != num_strings; ++idx)
                 {
-                        V.emplace_back(prototype_long_text);
+                        L.emplace_back(prototype_long_text);
                 }
         }
 }
