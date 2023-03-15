@@ -13,18 +13,25 @@
 #include <memory_resource>
 #include <variant>
 
+enum class Kind
+{
+        Int,
+        Double,
+};
 struct Base
 {
+        explicit Base(Kind k) :kind{ k } {}
         virtual ~Base() {}
+        Kind kind;
 };
 struct Int : Base
 {
-        Int(size_t x) :value{ x } {}
+        Int(size_t x) : Base{ Kind::Int }, value { x } {}
         size_t value;
 };
 struct Double : Base
 {
-        Double(double x) :value{ x } {}
+        Double(double x) : Base{ Kind::Double }, value{ x } {}
         double value;
 };
 
@@ -104,6 +111,22 @@ static std::vector<std::variant<Int,Double> > makeVariantVector(size_t sz)
         return result;
 }
 
+static void VariantVectorVisit(benchmark::State& state) {
+        const auto sz = state.range(0);
+
+        for (auto _ : state) {
+                state.PauseTiming();
+                auto V = makeVariantVector(sz);
+                state.ResumeTiming();
+                double sum = 0.0;
+                for (const auto& v : V)
+                {
+                        sum += std::visit([](auto&& arg) -> double {return static_cast<double>(arg.value); }, v);
+                }
+                benchmark::DoNotOptimize(sum);
+        }
+}
+BENCHMARK(VariantVectorVisit)->RangeMultiplier(2)->Range(2 << 5, 2 << 10);
 
 
 static void makePolyPmrSharedVector(benchmark::State& state) {
@@ -174,6 +197,39 @@ static void makePolyPmrRawVector(benchmark::State& state) {
 }
 BENCHMARK(makePolyPmrRawVector)->RangeMultiplier(2)->Range(2 << 5, 2 << 10);
 
+static void makePolyPmrRawVectorTypeSwitch(benchmark::State& state) {
+        const auto sz = state.range(0);
+
+        constexpr size_t buffer_size = 1024 * 1024 * 16;
+        std::vector<std::byte> buf(buffer_size);
+
+
+
+        for (auto _ : state) {
+                state.PauseTiming();
+                std::pmr::monotonic_buffer_resource resource{ buf.data(), buf.size(), std::pmr::null_memory_resource() };
+                auto V = makePolyPmrRawVector(&resource, sz);
+                state.ResumeTiming();
+                double sum = 0.0;
+                for (Base* ptr : V)
+                {
+                        switch (ptr->kind)
+                        {
+                        case Kind::Int:
+                                sum += reinterpret_cast<Int*>(ptr)->value;
+                                break;
+                        case Kind::Double:
+                                sum += reinterpret_cast<Double*>(ptr)->value;
+                                break;
+                        default:
+                                throw std::domain_error("somethign bad");
+                        }
+                }
+                benchmark::DoNotOptimize(sum);
+        }
+}
+BENCHMARK(makePolyPmrRawVectorTypeSwitch)->RangeMultiplier(2)->Range(2 << 5, 2 << 10);
+
 
 static void PolyVector(benchmark::State& state) {
         const auto sz = state.range(0);
@@ -202,6 +258,33 @@ static void PolyVector(benchmark::State& state) {
         }
 }
 BENCHMARK(PolyVector)->RangeMultiplier(2)->Range(2<<5,2<<10);
+
+static void PolyVectorTypeSwitch(benchmark::State& state) {
+        const auto sz = state.range(0);
+
+        for (auto _ : state) {
+                state.PauseTiming();
+                auto V = makePolyVector(sz);
+                state.ResumeTiming();
+                double sum = 0.0;
+                for (const std::shared_ptr<Base>& ptr : V)
+                {
+                        switch (ptr->kind)
+                        {
+                        case Kind::Int:
+                                sum += reinterpret_cast<Int*>(ptr.get())->value;
+                                break;
+                        case Kind::Double:
+                                sum += reinterpret_cast<Double*>(ptr.get())->value;
+                                break;
+                        default:
+                                throw std::domain_error("somethign bad");
+                        }
+                }
+                benchmark::DoNotOptimize(sum);
+        }
+}
+BENCHMARK(PolyVectorTypeSwitch)->RangeMultiplier(2)->Range(2 << 5, 2 << 10);
 
 
 
@@ -232,6 +315,8 @@ static void VariantVector(benchmark::State& state) {
         }
 }
 BENCHMARK(VariantVector)->RangeMultiplier(2)->Range(2 << 5, 2 << 10);
+
+
 
 
 
