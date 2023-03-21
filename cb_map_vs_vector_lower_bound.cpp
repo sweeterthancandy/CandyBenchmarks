@@ -25,7 +25,7 @@ std::tuple<
         static std::pmr::monotonic_buffer_resource pool{ buf.data(), buf.size(), std::pmr::null_memory_resource() };
 
         std::map<int64_t, std::array<std::byte, ValueSize>> M;
-        std::pmr::map<int64_t, std::array<std::byte, ValueSize>> pmrM;
+        std::pmr::map<int64_t, std::array<std::byte, ValueSize>> pmrM(&pool);
         std::vector < std::pair<int64_t, std::array<std::byte, ValueSize> > > V;
         std::vector<int64_t> index;
 
