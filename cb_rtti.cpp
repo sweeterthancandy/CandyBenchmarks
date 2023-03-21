@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <utility>
 #include <iterator>
+#include <random>
 
 struct Base
 {
@@ -29,7 +30,9 @@ std::vector<Base*> make_random_vec()
                 vec.push_back(new B{});
                 vec.push_back(new C{});
         }
-        std::random_shuffle(std::begin(vec),std::end(vec));
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(std::begin(vec),std::end(vec),g);
         return vec;
 }
 std::vector<std::shared_ptr<Base> > make_random_shared_vec()
@@ -42,7 +45,9 @@ std::vector<std::shared_ptr<Base> > make_random_shared_vec()
                 vec.push_back(std::make_shared<B>());
                 vec.push_back(std::make_shared<C>());
         }
-        std::random_shuffle(std::begin(vec),std::end(vec));
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(std::begin(vec),std::end(vec),g);
         return vec;
 }
 static void NoRTTITest(benchmark::State& state) {
