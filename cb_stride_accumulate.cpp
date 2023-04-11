@@ -89,6 +89,8 @@ static void vectorPlus(benchmark::State& state) {
                 }();
                 benchmark::DoNotOptimize(sum);
         }
+
+        state.SetItemsProcessed(state.iterations() * size);
 }
 
 constexpr size_t VectorSize = 1024 * 64; // something we would use for monte carlo
